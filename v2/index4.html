@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <script src="https://cdn.bootcss.com/phaser/2.6.2/phaser.min.js"></script>
+
+
+
+
+
+</head>
+<body>
+<div id="phaser"></div>
+</body>
+<script>
+    var game = new Phaser.Game(781, 261, Phaser.AUTO, '#phaser', { preload: preload, create: create, update: update ,over: over });
+
+    function preload() {
+
+//        game.load.image('lazur', 'assets/pics/thorn_lazur.png');
+        game.load.spritesheet('mummy', 'assets/sprites/metalslug_mummy37x45.png', 37, 45, 18);
+        game.load.image('lazur', 'assets/center.png');
+        //game.load.spritesheet('mummy', 'assets/paobu.png', 140, 153, 4);
+
+    }
+
+    var back;
+    var mummy;
+    var anim;
+    var loopText;
+
+    function create() {
+
+        back = game.add.image(0, 0, 'lazur');
+        back.scale.set(1);
+        back.smoothed = false;
+
+        mummy = game.add.sprite(0, 80, 'mummy', 5);
+        mummy.scale.set(1);
+        mummy.smoothed = false;
+        cursors = game.input.keyboard.createCursorKeys();
+        game.input.keyboard.addKeyCapture([ Phaser.Keyboard.SPACEBAR ]);
+
+
+        anim = mummy.animations.add('run');
+//
+//        anim.onStart.add(animationStarted, this);
+//        anim.onLoop.add(animationLooped, this);
+//        anim.onComplete.add(animationStopped, this);
+//
+//        anim.play(20, true);
+
+    }
+
+    function animationStarted(sprite, animation) {
+
+        game.add.text(32, 32, 'Animation started', { fill: 'white' });
+
+    }
+
+    function animationLooped(sprite, animation) {
+
+        if (animation.loopCount === 1)
+        {
+            loopText = game.add.text(32, 64, 'Animation looped', { fill: 'white' });
+        }
+        else
+        {
+            loopText.text = 'Animation looped x2';
+            animation.loop = false;
+        }
+
+    }
+
+    function animationStopped(sprite, animation) {
+
+        game.add.text(32, 64+32, 'Animation stopped', { fill: 'white' });
+
+    }
+
+    function update() {
+        game.physics.enable(mummy); // 加入物理运动
+        mummy.body.velocity.x = 0;
+        mummy.body.velocity.y = 0;
+        if (game.input.keyboard.downDuration(Phaser.Keyboard.SPACEBAR))
+        {
+            mummy.body.velocity.x = 300;
+            //anim.play(1, true)
+            anim.loop = true;
+            anim.next(1);
+        }
+        // 设置苹果与游戏边缘碰撞，
+        mummy.body.collideWorldBounds = true;
+        mummy.body.onWorldBounds = new Phaser.Signal();
+        mummy.body.onWorldBounds.add(function(apple, up, down, left, right) {
+            if (right) {
+                apple.kill();
+                game.state.add('over' , over);
+                game.state.start('over', true, false, 1323);
+            }
+        });
+
+    }
+
+    var over = function(game){
+        alert(1232132134213);
+    }
+</script>
+</html>

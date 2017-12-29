@@ -1,0 +1,26 @@
+<html>
+<title></title>
+<head>
+    <style>
+        html{height: 100%;margin:0; padding: 0;}
+        canvas{margin:0 auto;padding-left: 25%}
+    </style>
+
+</head>
+<script src="./build/phaser.js"></script>
+<script src="./js/boot.js"></script>
+<script src="./js/loader.js"></script>
+<script src="./js/menu.js"></script>
+<script src="./js/play.js"></script>
+<body>
+<div id ="content"></div>
+<script>
+    var game =  new Phaser.Game(320 , 505 ,Phaser.AUTO , 'content');
+    game.state.add('boot' , bootState);
+    game.state.add('loader' , loaderState);
+    game.state.start('boot');
+
+</script>
+</body>
+
+</html>

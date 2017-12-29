@@ -1,0 +1,380 @@
+<script src="https://cdn.bootcss.com/phaser/2.6.2/phaser.min.js"></script>
+<div id="game"></div>
+<script>
+// 实际应用场景改为window.innerWidth和window.innerHeight。
+// 这里是为了方便查看示例。
+var width = 320;
+var height = 568;
+
+// 创建游戏实例
+var game = new Phaser.Game(width, height, Phaser.AUTO, '#game');
+
+// 定义场景
+var states = {
+    // 加载场景
+    preload: function() {
+        this.preload = function() {
+            // 设置背景为黑色
+            game.stage.backgroundColor = '#000000';
+            // 加载游戏资源
+            game.load.crossOrigin = 'anonymous'; // 设置跨域
+            game.load.image('bg', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/bg.png');
+            game.load.image('dude', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/dude.png');
+            game.load.image('green', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/green.png');
+            game.load.image('red', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/red.png');
+            game.load.image('yellow', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/yellow.png');
+            game.load.image('bomb', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/bomb.png');
+            game.load.image('five', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/five.png');
+            game.load.image('three', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/three.png');
+            game.load.image('one', '//24haowan-cdn.shanyougame.com/pickApple2/assets/images/one.png');
+            game.load.audio('bgMusic', '//24haowan-cdn.shanyougame.com/pickApple2/assets/audio/bgMusic.mp3');
+            game.load.audio('scoreMusic', '//24haowan-cdn.shanyougame.com/pickApple2/assets/audio/addscore.mp3');
+            game.load.audio('bombMusic', '//24haowan-cdn.shanyougame.com/pickApple2/assets/audio/boom.mp3');
+            game.load.image('bullet', 'assets/misc/bullet0.png');
+            // 添加进度文字
+            var progressText = game.add.text(game.world.centerX, game.world.centerY, '0%', {
+                fontSize: '60px',
+                fill: '#ffffff'
+            });
+            progressText.anchor.setTo(0.5, 0.5);
+            // 监听加载完一个文件的事件
+            game.load.onFileComplete.add(function(progress) {
+                progressText.text = progress + '%';
+            });
+            // 监听加载完毕事件
+            game.load.onLoadComplete.add(onLoad);
+            // 最小展示时间，示例为3秒
+            var deadLine = false;
+            setTimeout(function() {
+                deadLine = true;
+            }, 3000);
+            // 加载完毕回调方法
+            function onLoad() {
+                if (deadLine) {
+                    // 已到达最小展示时间，可以进入下一个场景
+                    game.state.start('created');
+                } else {
+                    // 还没有到最小展示时间，1秒后重试
+                    setTimeout(onLoad, 1000);
+                }
+            }
+        }
+    },
+    // 开始场景
+    created: function() {
+        this.create = function() {
+            // 添加背景
+            var bg = game.add.image(0, 0, 'bg');
+            bg.width = game.world.width;
+            bg.height = game.world.height;
+            // 添加标题
+            var title = game.add.text(game.world.centerX, game.world.height * 0.25, '小恐龙接苹果', {
+                fontSize: '40px',
+                fontWeight: 'bold',
+                fill: '#f2bb15'
+            });
+            title.anchor.setTo(0.5, 0.5);
+            // 添加提示
+            var remind = game.add.text(game.world.centerX, game.world.centerY, '点击任意位置开始', {
+                fontSize: '20px',
+                fill: '#f2bb15'
+            });
+            remind.anchor.setTo(0.5, 0.5);
+            // 添加主角
+            var man = game.add.sprite(game.world.centerX, game.world.height * 0.75, 'dude');
+            var manImage = game.cache.getImage('dude');
+            man.width = game.world.width * 0.2;
+            man.height = man.width / manImage.width * manImage.height;
+            man.anchor.setTo(0.5, 0.5);
+            // 添加点击事件
+            game.input.onTap.add(function() {
+                game.state.start('play');
+            });
+        }
+    },
+    // 游戏场景
+    play: function() {
+        var man; // 主角
+        var apples; // 苹果
+        var score = 0; // 得分
+        var title; // 分数
+        var scoreMusic;
+        var bombMusic;
+        var bgMusic;
+        var bulletTime = 0;
+        this.create = function() {
+            score = 0;
+            // 开启物理引擎
+            game.physics.startSystem(Phaser.Physics.Arcade);
+            game.physics.arcade.gravity.y = 300;
+            // 得分
+            // 添加背景音乐
+            if (!bgMusic) {
+                bgMusic = game.add.audio('bgMusic');
+                bgMusic.loopFull();
+            }
+            // 缓存其他音乐
+            scoreMusic = game.add.audio('scoreMusic');
+            bombMusic = game.add.audio('bombMusic');
+            // 添加背景
+            var bg = game.add.image(0, 0, 'bg');
+            bg.width = game.world.width;
+            bg.height = game.world.height;
+            // 添加主角
+            man = game.add.sprite(game.world.centerX, game.world.height * 0.75, 'dude');
+            var manImage = game.cache.getImage('dude');
+            man.width = game.world.width * 0.2;
+            man.height = man.width / manImage.width * manImage.height;
+            man.anchor.setTo(0.5, 0.5);
+            game.physics.enable(man); // 加入物理运动
+            man.body.allowGravity = false; // 清除重力影响
+            // 添加分数
+            title = game.add.text(game.world.centerX, game.world.height * 0.25, '0', {
+                fontSize: '40px',
+                fontWeight: 'bold',
+                fill: '#f2bb15'
+            });
+            title.anchor.setTo(0.5, 0.5);
+            // 是否正在触摸
+            var touching = false;
+            // 监听按下事件
+            game.input.onDown.add(function(pointer) {
+                // 要判断是否点住主角，避免瞬移
+                if (Math.abs(pointer.x - man.x) < man.width / 2) touching = true;
+            });
+            // 监听离开事件
+            game.input.onUp.add(function() {
+                touching = false;
+            });
+            // 监听滑动事件
+            game.input.addMoveCallback(function(pointer, x, y, isTap) {
+                if (!isTap && touching) man.x = x;
+            });
+            // 添加苹果组
+            apples = game.add.group();
+            // 苹果类型
+            var appleTypes = ['green', 'red', 'yellow', 'bomb'];
+            var appleTimer = game.time.create(true);
+            appleTimer.loop(1000, function() {
+                var x = Math.random() * game.world.width;
+                var index = Math.floor(Math.random() * appleTypes.length)
+                var type = appleTypes[index];
+                var apple = apples.create(x, 0, type);
+                apple.type = type;
+                // 设置苹果加入物理运动
+                game.physics.enable(apple);
+                // 设置苹果大小
+                var appleImg = game.cache.getImage(type);
+                apple.width = game.world.width / 8;
+                apple.height = apple.width / appleImg.width * appleImg.height;
+                // 设置苹果与游戏边缘碰撞，
+                apple.body.collideWorldBounds = true;
+                apple.body.onWorldBounds = new Phaser.Signal();
+                apple.body.onWorldBounds.add(function(apple, up, down, left, right) {
+                    if (down) {
+                        apple.kill();
+                        if (apple.type !== 'bomb') game.state.start('over', true, false, score);
+                    }
+                });
+            });
+            appleTimer.start();
+
+            //子弹
+            bullets = game.add.group();
+            //如果为true，则用Group.create或Group.createMulitple创建的所有Sprites都将创建一个物理主体。使用physicsBodyType更改正文类型。
+            //http://phaser.io/docs/2.6.2/Phaser.GameObjectFactory.html#group
+            bullets.enableBody = true;
+            bullets.physicsBodyType = Phaser.Physics.ARCADE;
+
+
+            for (var i = 0; i < 20; i++)
+            {
+                var b = bullets.create(0, 0, 'bullet');
+                b.name = 'bullet' + i;
+                b.exists = false;
+                b.visible = false;
+                b.checkWorldBounds = true;
+                //http://phaser.io/docs/2.6.2/Phaser.Events.html#onOutOfBounds
+                //当游戏对象离开Phaser.World界限时，该信号被分派。
+                // 这个信号只有在Sprite.checkWorldBounds被设置为true时。 它发送一个参数： {任何}游戏对象，离开了世界的界限。
+                b.events.onOutOfBounds.add(resetBullet, this);
+            }
+
+            /*sprite = game.add.sprite(400, 550, 'man');
+            game.physics.enable(sprite, Phaser.Physics.ARCADE);*/
+
+            //创建并返回一个包含4个热键的对象，分别是向上，向下，向左和向右。
+            //http://phaser.io/docs/2.6.2/Phaser.Keyboard.html#createCursorKeys
+            cursors = game.input.keyboard.createCursorKeys();
+            game.input.keyboard.addKeyCapture([ Phaser.Keyboard.SPACEBAR ]);
+
+        }
+        this.update = function() {
+            // 监听接触事件
+            //检查两个游戏对象之间的重叠。对象可以是Sprites，Groups或Emitters。
+            // 您可以执行“精灵”与“精灵”，“精灵”与“群组”和“群组”重叠检查。
+            // 与碰撞不同，物体不会自动分离或者应用任何物理，他们只是测试重叠结果。
+            // 第一个和第二个参数都可以是不同类型的对象数组。 如果传递了两个数组，则会根据第二个参数的所有内容对第一个参数的内容进行测试。
+            // 注：此函数不是递归的，不会针对传递对象（即组内的组）的子对象进行测试。
+            //http://phaser.io/docs/2.6.2/Phaser.Physics.Arcade.html#overlap
+            game.physics.arcade.overlap(man, apples, pickApple, null, this);
+
+
+            //子弹
+            game.physics.arcade.overlap(bullets, apples, collisionHandler, null, this);
+
+            man.body.velocity.x = 0;
+            man.body.velocity.y = 0;
+
+            //控制主角移动距离
+            if (cursors.left.isDown)
+            {
+                man.body.velocity.x = -300;
+            }
+            else if (cursors.right.isDown)
+            {
+                man.body.velocity.x = 300;
+            }
+
+            if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR))
+            {
+                fireBullet();
+            }
+        }
+
+
+        function fireBullet () {
+
+            if (game.time.now > bulletTime)
+            {
+                bullet = bullets.getFirstExists(false);
+
+                if (bullet)
+                {
+                    bullet.reset(man.x + 6, man.y- 8);
+                    bullet.body.velocity.y = -600;
+                    bulletTime = game.time.now + 150;
+                }
+            }
+
+        }
+        function resetBullet (bullet) {
+
+            bullet.kill();
+
+        }
+        //  Called if the bullet hits one of the veg sprites
+        function collisionHandler (bullet, veg) {
+
+            bullet.kill();
+            veg.kill();
+
+        }
+        // 接触事件
+        function pickApple(man, apple) {
+            if (apple.type === 'bomb') {
+                // 播放音效
+                bombMusic.play();
+                game.state.start('over', true, false, score);
+            } else {
+                var point = 1;
+                var img = 'one';
+                if (apple.type === 'red') {
+                    point = 3;
+                    img = 'three';
+                } else if (apple.type === 'yellow') {
+                    point = 5;
+                    img = 'five';
+                }
+                // 添加得分图片
+                var goal = game.add.image(apple.x, apple.y, img);
+                //从缓存中获取一个Image对象。这将返回一个DOM Image对象，而不是Phaser.Image对象。
+                // 根据给定的关键字查找对象。 注意：如果找不到对象，则会显示console.warn消息。
+                // 只搜索图像缓存，其中包括通过Loader.image，Sprite表和纹理图集加载的图像。
+                // 如果您需要使用位图字体或类似的图像，请使用各自的“get”方法。
+                //http://phaser.io/docs/2.6.2/Phaser.Cache.html#getImage
+                var goalImg = game.cache.getImage(img);
+                goal.width = apple.width;
+                goal.height = goal.width / (goalImg.width / goalImg.height);
+                goal.alpha = 0;
+                // 添加过渡效果
+                //Tween允许您在定义的时间段内更改目标对象的一个​​或多个属性。
+                // 这可以用于诸如阿尔法衰落精灵之类的东西，缩放它们或运动。
+                // 使用Tween.to或Tween.from来设置补间值。
+                // 您可以在同一个对象上创建多个补间 通过在同一个Tween上多次调用Tween.to。
+                // 以这种方式指定的其他补间变成“孩子”补间和 依次播放。您可以使用Tween.timeScale和Tween.reverse来控制此Tween
+                // 及其所有子项的播放。
+                //http://phaser.io/docs/2.6.2/Phaser.Tween.html
+
+                //alpha 透明度
+
+                var showTween = game.add.tween(goal).to({
+                    alpha: 1,
+                    y: goal.y - 20
+                }, 100, Phaser.Easing.Linear.None, true, 0, 0, false);
+                showTween.onComplete.add(function() {
+                    var hideTween = game.add.tween(goal).to({
+                        alpha: 0,
+                        y: goal.y - 20
+                    }, 100, Phaser.Easing.Linear.None, true, 200, 0, false);
+                    hideTween.onComplete.add(function() {
+                        goal.kill();
+                    });
+                });
+                // 更新分数
+                score += point;
+                title.text = score;
+                // 清除苹果
+                apple.kill();
+                // 播放音效
+                scoreMusic.play();
+            }
+        }
+    },
+    // 结束场景
+    over: function() {
+        var score = 0;
+        this.init = function() {
+            score = arguments[0];
+        }
+        this.create = function() {
+            // 添加背景
+            var bg = game.add.image(0, 0, 'bg');
+            bg.width = game.world.width;
+            bg.height = game.world.height;
+            // 添加文本
+            var title = game.add.text(game.world.centerX, game.world.height * 0.25, '游戏结束', {
+                fontSize: '40px',
+                fontWeight: 'bold',
+                fill: '#f2bb15'
+            });
+            title.anchor.setTo(0.5, 0.5);
+            var scoreStr = '你的得分是：'+score+'分';
+            var scoreText = game.add.text(game.world.centerX, game.world.height * 0.4, scoreStr, {
+                fontSize: '30px',
+                fontWeight: 'bold',
+                fill: '#f2bb15'
+            });
+            scoreText.anchor.setTo(0.5, 0.5);
+            var remind = game.add.text(game.world.centerX, game.world.height * 0.6, '点击任意位置再玩一次', {
+                fontSize: '20px',
+                fontWeight: 'bold',
+                fill: '#f2bb15'
+            });
+            remind.anchor.setTo(0.5, 0.5);
+            // 添加点击事件
+            game.input.onTap.add(function() {
+                game.state.start('play');
+            });
+        }
+    }
+};
+
+// 添加场景到游戏示例中
+Object.keys(states).map(function(key) {
+    game.state.add(key, states[key]);
+});
+
+// 启动游戏
+game.state.start('preload');
+</script>
